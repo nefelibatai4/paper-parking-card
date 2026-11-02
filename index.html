@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>叠纸停车牌 · 可 DIY 的打印折叠停车牌</title>
+<style>
+  :root{
+    --ink:#111;
+    --muted:#6b7280;
+    --line:#e5e7eb;
+    --accent:#2563eb;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden}
+  body{
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    background:#f4f5f7;color:var(--ink);-webkit-font-smoothing:antialiased;
+  }
+
+  .app{display:grid;grid-template-columns:420px minmax(0,1fr);gap:14px;
+       height:100vh;height:100dvh;max-width:1360px;margin:0 auto;
+       padding:12px 14px;align-items:stretch;overflow:hidden}
+
+  .head{margin:0 2px 2px;display:flex;align-items:baseline;gap:8px;flex:0 0 auto}
+  .head h1{font-size:16px;margin:0;letter-spacing:.2px;white-space:nowrap}
+  .head p{margin:0;color:var(--muted);font-size:10.5px;line-height:1.4}
+
+  /* 侧栏：自身可滚，但正常屏幕下能一屏放下 */
+  .side{display:flex;flex-direction:column;gap:9px;height:100%;min-height:0;
+        overflow-y:auto;overflow-x:hidden;padding-right:2px}
+  .cols{display:grid;grid-template-columns:1fr 1.08fr;gap:9px;align-items:start}
+  .col{display:flex;flex-direction:column;gap:9px;min-width:0}
+  .side::-webkit-scrollbar{width:6px}
+  .side::-webkit-scrollbar-thumb{background:#d3d7de;border-radius:3px}
+
+  .panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;
+         box-shadow:0 1px 2px rgba(16,24,40,.04);flex:0 0 auto}
+  .panel + .panel{margin-top:0}
+  .panel h2{font-size:10px;margin:0 0 8px;color:var(--muted);font-weight:600;letter-spacing:1px}
+
+  .field{margin-bottom:9px}
+  .field:last-child{margin-bottom:0}
+  .field label{display:block;font-size:10.5px;color:var(--muted);margin-bottom:4px}
+  .field input[type=text]{width:100%;padding:6px 9px;border:1px solid #d8dbe2;border-radius:7px;
+    font-size:13px;font-family:inherit;background:#fbfbfc;color:var(--ink)}
+  .field input[type=text]:focus{outline:2px solid rgba(37,99,235,.2);border-color:var(--accent);background:#fff}
+  .field select{width:100%;padding:6px 8px;border:1px solid #d8dbe2;border-radius:7px;
+    font-size:12px;font-family:inherit;background:#fbfbfc;color:var(--ink);cursor:pointer}
+  .hint{font-size:10px;color:#9aa0ab;line-height:1.45}
+
+  .chips{display:flex;gap:5px;flex-wrap:wrap}
+  .chip{border:1px solid #d8dbe2;background:#fff;border-radius:999px;padding:3px 8px;
+        font-size:11.5px;cursor:pointer;font-family:inherit;color:var(--ink);transition:.14s;line-height:1.5;
+        white-space:nowrap}
+  .chip:hover{border-color:#b9bec9}
+  .chip[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  /* 行内控件：标签 + 内容排一行，省高度 */
+  .rowline{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+  .rowline:last-child{margin-bottom:0}
+  .rowline > span{flex:0 0 30px;font-size:10.5px;color:var(--muted)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+  /* 主题格子 */
+  .themes{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+  .tcard{border:1.5px solid #e3e6eb;border-radius:10px;padding:0;overflow:hidden;cursor:pointer;
+         background:#fff;font-family:inherit;text-align:left;transition:.14s}
+  .tcard:hover{border-color:#b9bec9;transform:translateY(-1px)}
+  .tcard[aria-pressed=true]{border-color:var(--ink);box-shadow:0 0 0 2px rgba(17,17,17,.08)}
+  .tcard .prev{height:40px;display:flex;align-items:center;justify-content:center;
+               font-size:10.5px;font-weight:800;letter-spacing:.2px;overflow:hidden}
+  .tcard .nm{font-size:9.5px;color:#6b7280;padding:2px 1px 3px;text-align:center;
+             white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tcard[aria-pressed=true] .nm{color:var(--ink);font-weight:600}
+
+  .check{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;margin-top:11px;cursor:pointer;color:#374151;line-height:1.5}
+  .check input{margin-top:2px;flex:0 0 auto}
+
+  .btn{width:100%;padding:12px;border-radius:10px;border:0;font-size:14px;font-weight:600;
+       font-family:inherit;cursor:pointer;background:var(--ink);color:#fff;letter-spacing:.3px}
+  .btn:hover{opacity:.86}
+
+  .colors{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .colors label{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);cursor:pointer}
+  input[type=color]{-webkit-appearance:none;appearance:none;width:30px;height:24px;border:1px solid #d8dbe2;
+                    border-radius:6px;background:none;padding:0;cursor:pointer}
+  input[type=color]::-webkit-color-swatch-wrapper{padding:2px}
+  input[type=color]::-webkit-color-swatch{border:none;border-radius:4px}
+
+  .tips{font-size:11.5px;color:var(--muted);line-height:1.85}
+  .tips b{color:var(--ink)}
+  kbd{background:#eef0f3;border-radius:4px;padding:1px 5px;font-size:10.5px;font-family:ui-monospace,monospace}
+
+  /* 预览 */
+  .stage{min-width:0;height:100%;min-height:0;display:flex;flex-direction:column}
+  .stage-bar{display:flex;justify-content:space-between;align-items:center;
+             margin-bottom:6px;font-size:11px;color:#6b7280;gap:10px;flex:0 0 auto}
+  .stage-inner{background:#e8e9ec;border-radius:14px;padding:16px;overflow:hidden;
+               flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center}
+  .sheet-holder{line-height:0;display:flex;align-items:center;justify-content:center}
+
+  /* 纸张 */
+  .sheet{position:relative;width:297mm;height:210mm;background:#fff;
+         box-shadow:0 10px 30px rgba(0,0,0,.15);transform-origin:0 0}
+  .piece{position:absolute}
+  .face{position:absolute;display:flex;align-items:center;justify-content:center;overflow:hidden;
+        background-color:var(--t-bg);
+        background-image:var(--t-pattern,none);
+        background-size:var(--t-pattern-size,auto);
+        color:var(--t-fg)}
+  .pad{display:flex;flex-direction:column;align-items:center;justify-content:center;
+       text-align:center;position:relative;z-index:2;width:100%}
+  .sub{line-height:1.22;white-space:nowrap;font-weight:500;opacity:.9}
+  .num{line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .flip .pad{transform:rotate(180deg)}
+  .frame{position:absolute;inset:2.2mm;border:var(--frame,none);border-radius:var(--radius,0);
+         pointer-events:none;z-index:1;opacity:.9}
+
+  /* 安全色条纹 */
+  .stripes::before,.stripes::after{
+    content:"";position:absolute;left:0;right:0;height:var(--stripe-h,4mm);z-index:1;
+    background:repeating-linear-gradient(45deg,var(--t-stripe) 0 2.6mm,transparent 2.6mm 5.2mm);
+  }
+  .stripes::before{top:0}
+  .stripes::after{bottom:0}
+
+  .cut{position:absolute;inset:0;border:.2mm solid #b9bcc4;pointer-events:none}
+  .fold-v{position:absolute;top:0;bottom:0;width:0;border-left:.35mm dashed #98a0ae;pointer-events:none}
+  .fold-h{position:absolute;left:0;right:0;height:0;border-top:.35mm dashed #98a0ae;pointer-events:none}
+  .ruler{position:absolute;pointer-events:none;color:#b4b9c2;font-size:2.3mm;letter-spacing:0}
+  .ruler .bar{height:1.3mm;border-left:.2mm solid currentColor;border-right:.2mm solid currentColor;
+              border-bottom:.2mm solid currentColor}
+
+  /* ---------- 视图切换 + 3D ---------- */
+  .viewTabs{display:flex;gap:6px;margin-bottom:9px}
+  .vtab{border:1px solid #d8dbe2;background:#fff;border-radius:999px;padding:6px 15px;
+        font-size:12.5px;font-family:inherit;cursor:pointer;color:var(--ink)}
+  .vtab[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  #pane3d{display:none;position:relative;border-radius:14px;flex:1 1 auto;min-height:0;overflow:hidden;
+          background:radial-gradient(120% 95% at 50% 15%,#e6e8ed 0%,#c8ccd4 100%);
+          cursor:grab;touch-action:none;align-items:center;justify-content:center;
+          -webkit-user-select:none;user-select:none}
+  #pane3d.dragging{cursor:grabbing}
+  .scene-wrap{perspective:1600px;perspective-origin:50% 44%;transform-origin:50% 50%}
+  .scene3d{position:relative;width:0;height:0;transform-style:preserve-3d}
+  .scene3d .face{box-shadow:0 0 0 .16mm rgba(0,0,0,.14)}
+  #paneHow{display:none;flex:1 1 auto;min-height:0;overflow-y:auto;background:#fff;
+           border:1px solid var(--line);border-radius:14px;padding:18px 22px;
+           align-items:center;justify-content:center}
+  #paneHow h2{font-size:10px;color:var(--muted);letter-spacing:1px;margin:0 0 8px}
+  .steps{font-size:13px;line-height:1.8;color:#374151}
+  .steps > div{display:flex;gap:8px;margin-bottom:4px}
+  .steps b{flex:0 0 16px;height:16px;border-radius:50%;background:#111;color:#fff;font-size:10px;
+           display:inline-flex;align-items:center;justify-content:center;margin-top:3px;font-weight:500}
+  .hint3d{position:absolute;left:0;right:0;bottom:9px;text-align:center;
+          font-size:11.5px;color:#8b919c;pointer-events:none;letter-spacing:.3px}
+  .reset3d{position:absolute;right:12px;top:12px;border:1px solid #cfd3da;background:#fff;
+           border-radius:8px;padding:5px 11px;font-size:11.5px;font-family:inherit;
+           cursor:pointer;color:#4b5563}
+  .reset3d:hover{border-color:#b0b6c0}
+
+  /* 打印：屏幕布局整个隐藏，只输出一张克隆出来的纸 */
+  #printOnly{display:none}
+  @page{size:A4 landscape;margin:0}
+  @media print{
+    html,body{height:auto !important;overflow:visible !important;background:#fff;margin:0;padding:0}
+    body.print-ready > .app{display:none !important}
+    body.print-ready #printOnly{display:block !important}
+    #printOnly .sheet{zoom:1 !important;box-shadow:none !important;margin:0 !important;
+                      transform:none !important;position:static !important}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+
+
+  /* 窄屏：退回可滚动的单列 */
+  @media (max-width:1020px){
+    html,body{height:auto;overflow:auto}
+    .app{grid-template-columns:1fr;height:auto;overflow:visible;padding:12px}
+    .side{height:auto;overflow:visible;padding-right:0}
+    .stage{height:auto}
+    .stage-inner{flex:none;height:65vw;max-height:460px}
+    #pane3d,#paneHow{flex:none;height:420px}
+  }
+</style>
+</head>
+<body>
+
+<div id="printOnly"></div>
+
+<div class="app">
+  <!-- ================= 控制区 ================= -->
+  <aside class="side">
+    <div class="head">
+      <h1>叠纸停车牌</h1>
+      <p>内外两面分开写 · 一张 A4 出 2 张</p>
+    </div>
+
+    <div class="cols">
+      <div class="col">
+        <div class="panel">
+          <h2>外侧 · 朝车窗</h2>
+          <div class="field">
+            <label for="phone">手机号</label>
+            <input id="phone" type="text" inputmode="numeric" value="138 0000 0000" maxlength="20">
+          </div>
+          <div class="field">
+            <label for="sub">小字</label>
+            <input id="sub" type="text" value="临时停车 请电联" maxlength="16">
+          </div>
+          <label class="check" style="margin-top:5px;font-size:11px">
+            <input id="spaced" type="checkbox" checked>
+            <span>3-4-4 分组</span>
+          </label>
+        </div>
+
+        <div class="panel">
+          <h2>内侧 · 朝驾驶员</h2>
+          <label class="check" style="margin-top:0;font-size:11px">
+            <input id="innerNumber" type="checkbox">
+            <span>也印手机号</span>
+          </label>
+          <div class="field" style="margin-top:6px">
+            <label for="innerBig">大字</label>
+            <input id="innerBig" type="text" value="临时停车" maxlength="12">
+          </div>
+          <div class="field">
+            <label for="innerSmall">小字</label>
+            <input id="innerSmall" type="text" value="" maxlength="16" placeholder="留空不印">
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="panel">
+          <h2>尺寸</h2>
+          <div class="rowline"><span>成品</span>
+            <div class="chips" id="sizeChips">
+              <button class="chip" data-size="s" aria-pressed="false">小</button>
+              <button class="chip" data-size="m" aria-pressed="true">标准</button>
+              <button class="chip" data-size="l" aria-pressed="false">大</button>
+            </div>
+          </div>
+          <div class="rowline"><span>底脚</span>
+            <div class="chips" id="footChips">
+              <button class="chip" data-foot="20" aria-pressed="false">20</button>
+              <button class="chip" data-foot="25" aria-pressed="true">25</button>
+              <button class="chip" data-foot="30" aria-pressed="false">30</button>
+              <button class="chip" data-foot="40" aria-pressed="false">40</button>
+            </div>
+          </div>
+          <div class="rowline"><span>每页</span>
+            <div class="chips" id="copyChips">
+              <button class="chip" data-copies="auto" aria-pressed="true">排满</button>
+              <button class="chip" data-copies="1" aria-pressed="false">1</button>
+              <button class="chip" data-copies="2" aria-pressed="false">2</button>
+            </div>
+          </div>
+          <div class="hint" id="footHint" style="margin-top:1px"></div>
+        </div>
+
+        <div class="panel">
+          <h2>打印</h2>
+          <button class="btn" id="printBtn" style="padding:9px">打印 / 存成 PDF</button>
+          <label class="check" style="margin-top:6px;font-size:11px">
+            <input id="showFold" type="checkbox" checked>
+            <span>折叠虚线</span>
+          </label>
+          <div class="hint" style="margin-top:6px">
+            <b style="color:#111">A4 横向 · 缩放 100% · 边距无 · 勾选背景图形</b><br>
+            右下角有 50mm 标尺，印完量一下就知道缩放对不对。<br>
+            卡纸 200–250g 最好折；深色主题费墨。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>外观</h2>
+      <div class="themes" id="themeGrid" style="margin-bottom:7px"></div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:0 0 92px"><label style="display:block;font-size:10.5px;color:var(--muted);margin-bottom:4px">字体</label>
+          <select id="fontSel">
+            <option value="hei">黑体</option>
+            <option value="black">超黑</option>
+            <option value="din">车牌</option>
+            <option value="impact">海报</option>
+            <option value="mono">等宽</option>
+            <option value="songti">宋体</option>
+            <option value="kaiti">手写</option>
+          </select>
+        </div>
+        <div style="flex:0 0 80px"><label style="display:block;font-size:10.5px;color:var(--muted);margin-bottom:4px">边框</label>
+          <select id="borderSel">
+            <option value="thin">细线</option>
+            <option value="none">无</option>
+            <option value="double">双线</option>
+            <option value="bold">粗框</option>
+          </select>
+        </div>
+        <div class="colors" style="margin-left:auto">
+          <label>底 <input type="color" id="bgColor"></label>
+          <label>字 <input type="color" id="fgColor"></label>
+          <button class="chip" id="resetColors">跟随主题</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= 预览（即打印内容） ================= -->
+  <main class="stage">
+    <div class="viewTabs">
+      <button class="vtab" data-view="2d" aria-pressed="true">A4 打印版</button>
+      <button class="vtab" data-view="3d" aria-pressed="false">3D 预览</button>
+      <button class="vtab" data-view="how" aria-pressed="false">折法</button>
+    </div>
+
+    <div class="stage-bar" id="stageBar">
+      <span id="sizeLabel"></span>
+      <span>A4 横向 · 实际尺寸预览</span>
+    </div>
+
+    <div class="stage-inner" id="stageInner">
+      <div class="sheet-holder" id="sheetHost"></div>
+    </div>
+
+    <div id="pane3d">
+      <button class="reset3d" id="reset3d">复位视角</button>
+      <div class="hint3d">按住拖动旋转 · 按尺寸和折法实时生成</div>
+    </div>
+
+    <div id="paneHow"></div>
+  </main>
+</div>
+
+<script>
+/* ==================================================================
+   1. 尺寸（毫米）
+   参照市售：128×34.5mm、120×36mm 两款 → 标准取 120×36
+   ================================================================== */
+const LAYOUTS = {
+  tent: { sizes:{ s:{w:100,h:34}, m:{w:120,h:38}, l:{w:145,h:42} } }   // 底脚深度见 state.footMm
+};
+const SHEET = { w:297, h:210, margin:8, gap:4 };
+
+/* ==================================================================
+   2. 主题：全部用 CSS 渐变做图案，打印是矢量不会糊
+   ================================================================== */
+const THEMES = [
+  { id:'plain', name:'极简白', bg:'#ffffff', fg:'#111111',
+    pattern:'none', font:'hei', border:'thin' },
+  { id:'hazard', name:'警示黄黑', bg:'#ffd400', fg:'#111111',
+    pattern:'none', font:'black', border:'bold', stripes:'#111111' },
+  { id:'neon', name:'霓虹赛博', bg:'#17052e', fg:'#37e8ff',
+    pattern:'repeating-linear-gradient(0deg,rgba(55,232,255,.07) 0 .3mm,transparent .3mm 7mm),repeating-linear-gradient(90deg,rgba(55,232,255,.07) 0 .3mm,transparent .3mm 7mm)',
+    font:'impact', border:'double' },
+  { id:'hk', name:'港风霓虹', bg:'#0b0a10', fg:'#ff5f9e',
+    pattern:'repeating-linear-gradient(0deg,rgba(255,95,158,.05) 0 .5mm,transparent .5mm 2mm)',
+    font:'din', border:'thin' },
+  { id:'terminal', name:'终端绿', bg:'#04120a', fg:'#3dff8a',
+    pattern:'repeating-linear-gradient(0deg,rgba(61,255,138,.09) 0 .4mm,transparent .4mm 1.8mm)',
+    font:'mono', border:'thin' },
+  { id:'road', name:'公路牌', bg:'#14532d', fg:'#ffffff',
+    pattern:'none', font:'din', border:'double', radius:'1.5mm' },
+  { id:'film', name:'老电影', bg:'#f4ead3', fg:'#3a2718',
+    pattern:'radial-gradient(circle,rgba(58,39,24,.10) .18mm,transparent .19mm)',
+    patternSize:'1.2mm 1.2mm', font:'songti', border:'double' },
+  { id:'gold', name:'黑金', bg:'#0b0b0d', fg:'#d9b25f',
+    pattern:'repeating-linear-gradient(45deg,rgba(217,178,95,.05) 0 1.4mm,transparent 1.4mm 2.8mm)',
+    font:'songti', border:'double' },
+  { id:'pop', name:'波普粉', bg:'#ff5fa2', fg:'#111111',
+    pattern:'radial-gradient(circle,rgba(255,255,255,.45) .5mm,transparent .51mm)',
+    patternSize:'4mm 4mm', font:'black', border:'bold' },
+  { id:'space', name:'深空', bg:'#0b1b33', fg:'#e9effb',
+    pattern:'repeating-linear-gradient(60deg,rgba(110,168,255,.05) 0 .3mm,transparent .3mm 6mm)',
+    font:'din', border:'thin' },
+  { id:'blood', name:'血字', bg:'#0a0a0a', fg:'#c1121f',
+    pattern:'radial-gradient(circle,rgba(193,18,31,.10) .3mm,transparent .31mm)',
+    patternSize:'2.6mm 2.6mm', font:'kaiti', border:'bold' },
+  { id:'vhs', name:'录像带', bg:'#101018', fg:'#f2f2f7',
+    pattern:'repeating-linear-gradient(0deg,rgba(255,255,255,.06) 0 .3mm,transparent .3mm 1.3mm)',
+    font:'mono', border:'double' }
+];
+
+/* 注：PingFang SC 最粗只有 Semibold，数字要够黑得用 Helvetica Neue / Arial Black
+   字体名统一用单引号，方便嵌进 HTML 的 style="" 里 */
+const FONTS = {
+  hei    :{ num:"'Helvetica Neue','PingFang SC',sans-serif",              weight:700 },
+  black  :{ num:"'Arial Black','Helvetica Neue','PingFang SC',sans-serif", weight:400 },
+  din    :{ num:"'DIN Condensed','Helvetica Neue','PingFang SC',sans-serif", weight:700 },
+  impact :{ num:"Impact,'Arial Black','PingFang SC',sans-serif",           weight:400 },
+  mono   :{ num:"'SF Mono',Menlo,ui-monospace,monospace",                  weight:700 },
+  songti :{ num:"'Songti SC','PingFang SC',serif",                         weight:700 },
+  kaiti  :{ num:"'Kaiti SC','PingFang SC',serif",                          weight:400 }
+};
+
+const BORDERS = {
+  none:'none', thin:'.35mm solid currentColor',
+  double:'1.1mm double currentColor', bold:'1.2mm solid currentColor'
+};
+
+
+
+/* ==================================================================
+   3. 状态
+   ================================================================== */
+const state = {
+  size:'m', copies:'auto', footMm:25,
+  themeId:'plain', font:'hei', border:'thin',
+  bg:null, fg:null,          // null = 跟随主题
+  showFold:true
+};
+
+const $ = s => document.querySelector(s);
+const phoneEl = $('#phone'), subEl = $('#sub'), spacedEl = $('#spaced'),
+      foldEl = $('#showFold'), stageInner = $('#stageInner'), sheetHost = $('#sheetHost');
+
+const theme = () => THEMES.find(t => t.id === state.themeId);
+const escapeHTML = s => String(s||'').replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function formatNumber(raw, spaced){
+  const d = (raw||'').replace(/\D/g,'').slice(0,11);
+  if(!spaced) return d;
+  if(d.length<=3) return d;
+  if(d.length<=7) return d.slice(0,3)+' '+d.slice(3);
+  return d.slice(0,3)+' '+d.slice(3,7)+' '+d.slice(7);
+}
+
+/* 成品 / 纸面尺寸 */
+function metrics(){
+  const sz = LAYOUTS.tent.sizes[state.size];
+  return { w:sz.w, h:sz.h, pw:sz.w, ph:sz.h*2 + state.footMm*2, foot:state.footMm };
+}
+
+/* 网格排布 */
+function grid(){
+  const m = metrics();
+  const cols = Math.max(1, Math.floor((SHEET.w - 2*SHEET.margin + SHEET.gap) / (m.pw + SHEET.gap)));
+  const rows = Math.max(1, Math.floor((SHEET.h - 2*SHEET.margin + SHEET.gap) / (m.ph + SHEET.gap)));
+  const max  = Math.min(cols*rows, 12);
+  const want = state.copies === 'auto' ? max : Math.min(+state.copies, max);
+
+  const useCols = Math.min(cols, want);
+  const useRows = Math.ceil(want / useCols);
+  const blockW = useCols*m.pw + (useCols-1)*SHEET.gap;
+  const blockH = useRows*m.ph + (useRows-1)*SHEET.gap;
+  const x0 = (SHEET.w - blockW)/2, y0 = (SHEET.h - blockH)/2;
+
+  const cells = [];
+  for(let i=0;i<want;i++){
+    const c = i % useCols, r = Math.floor(i / useCols);
+    cells.push({ x: x0 + c*(m.pw+SHEET.gap), y: y0 + r*(m.ph+SHEET.gap) });
+  }
+  return { cells, max, want };
+}
+
+/* ==================================================================
+   4. 构建 A4
+   ================================================================== */
+function applyThemeVars(el){
+  const t = theme();
+  el.style.setProperty('--t-bg', state.bg || t.bg);
+  el.style.setProperty('--t-fg', state.fg || t.fg);
+  el.style.setProperty('--t-pattern', t.pattern || 'none');
+  el.style.setProperty('--t-pattern-size', t.patternSize || 'auto');
+  el.style.setProperty('--frame', BORDERS[state.border]);
+  el.style.setProperty('--radius', t.radius || '0');
+  if(t.stripes) el.style.setProperty('--t-stripe', t.stripes);
+  return el;
+}
+
+function buildSheet(o){
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet';
+  applyThemeVars(sheet);
+  grid().cells.forEach(pos => sheet.appendChild(buildPiece(o, pos, theme())));
+  sheet.appendChild(rulerBar());
+  return sheet;
+}
+
+function buildPiece(o, pos, t){
+  const m = metrics();
+  const piece = document.createElement('div');
+  piece.className = 'piece';
+  piece.style.cssText = `left:${pos.x}mm;top:${pos.y}mm;width:${m.pw}mm;height:${m.ph}mm`;
+  const stripe = t.stripes ? 'stripes' : '';
+
+  // 折线在中间、印刷面朝外时，两个面的字头都要朝向折线：
+  // 上半（内侧）倒置、下半（外侧）正向。反过来做，折完全部是倒的。
+  piece.appendChild(faceEl(o.inner, 0, m.foot, m.w, m.h, ('flip '+stripe).trim()));
+  piece.appendChild(faceEl(o.outer, 0, m.foot+m.h, m.w, m.h, stripe));
+
+  if(o.showFold){
+    [m.foot, m.foot+m.h, m.foot+m.h*2].forEach(y=>{
+      const fl = document.createElement('div');
+      fl.className = 'fold-h'; fl.style.top = y+'mm';
+      piece.appendChild(fl);
+    });
+  }
+
+  piece.appendChild(Object.assign(document.createElement('div'), {className:'cut'}));
+  return piece;
+}
+
+function faceEl(content, x, y, w, h, extraClass){
+  const f = document.createElement('div');
+  f.className = 'face' + (extraClass ? ' '+extraClass : '');
+  f.style.cssText = `left:${x}mm;top:${y}mm;width:${w}mm;height:${h}mm`;
+
+  const subSize = Math.max(2.5, Math.min(5, h*0.115)).toFixed(2);
+  const padY = Math.max(2.6, h*0.10).toFixed(2);
+
+  f.style.setProperty('--stripe-h', Math.max(2.8, Math.min(5, h*0.13)).toFixed(2)+'mm');
+
+  const frame = document.createElement('div');
+  frame.className = 'frame';
+
+  const pad = document.createElement('div');
+  pad.className = 'pad';
+  pad.style.padding = `${padY}mm 4mm`;
+
+  const sub = document.createElement('div');
+  sub.className = 'sub';
+  sub.style.fontSize = subSize + 'mm';
+  sub.textContent = content.small || '';
+  if(!content.small) sub.style.display = 'none';
+
+  const num = document.createElement('div');
+  num.className = 'num';
+  // 用 DOM 属性设置，避免字体名里的引号把 style 属性截断
+  num.style.fontFamily = FONTS[state.font].num;
+  num.style.fontWeight = FONTS[state.font].weight;
+  num.textContent = content.main || '';
+  if(content.maxHRatio) num.dataset.maxh = content.maxHRatio;
+  if(!content.main) num.style.display = 'none';
+
+  pad.append(sub, num);
+  f.append(frame, pad);
+  return f;
+}
+
+/* 50mm 标尺：验证打印是否 100% */
+function rulerBar(){
+  const d = document.createElement('div');
+  d.className = 'ruler';
+  d.style.cssText = `left:${SHEET.w - SHEET.margin - 50}mm;top:${SHEET.h - 5.4}mm;width:50mm`;
+  d.innerHTML = `<div class="bar" style="width:50mm"></div>
+    <div style="margin-top:.4mm">50mm 标尺 · 量不对说明缩放不是 100%</div>`;
+  return d;
+}
+
+/* ==================================================================
+   4.5 3D 预览（纯 CSS 3D，无外部库）
+   ================================================================== */
+const V3 = { rx: 16, ry: 26 };
+/* 每种版式给一个能看清结构的默认视角 */
+const VIEW_DEFAULT = { rx: 12, ry: 38 };
+const DEG = Math.PI/180;
+
+function blankFace(w, h){
+  const f = document.createElement('div');
+  f.className = 'face';
+  f.style.cssText = `left:0;top:0;width:${w}mm;height:${h}mm`;
+  return f;
+}
+
+/* 返回一组 { el, tf, origin }：正面 + 贴背面的空白层，避免看到镜像文字 */
+function threePanels(o){
+  const m = metrics(), t = theme();
+  const stripe = t.stripes ? 'stripes' : '';
+  const out = [];
+  const add = (el, tf, origin) => out.push({ el, tf, origin: origin || 'center center' });
+
+  const beta = 18*DEG;
+  const base = m.h*Math.cos(beta);           // 脊到脚线的垂直高度
+  const dz   = m.h*Math.sin(beta);           // 脊到脚线的水平外扩
+  const dy   = -base/2;                      // 让整体垂直居中
+
+  // 正面 = 外侧（号码），朝观察者
+  const tfF = `translate(-50%,${dy.toFixed(2)}mm) rotateX(18deg)`;
+  add(faceEl(o.outer,0,0,m.w,m.h,stripe), tfF, '50% 0%');
+  add(blankFace(m.w,m.h), tfF + ' translateZ(-0.5mm)', '50% 0%');
+
+  // 背面 = 内侧（朝驾驶员），绕 Y 转 180 让它朝后
+  const tfB = `translate(-50%,${dy.toFixed(2)}mm) rotateX(-18deg) rotateY(180deg)`;
+  add(faceEl(o.inner,0,0,m.w,m.h,stripe), tfB, '50% 0%');
+  add(blankFace(m.w,m.h), tfB + ' translateZ(-0.5mm)', '50% 0%');
+
+  // 两条折下去贴台面的脚
+  add(blankFace(m.w, m.foot),
+      `translate3d(-50%,${(base/2).toFixed(2)}mm,${dz.toFixed(2)}mm) rotateX(90deg)`, '50% 0%');
+  add(blankFace(m.w, m.foot),
+      `translate3d(-50%,${(base/2).toFixed(2)}mm,${(-dz).toFixed(2)}mm) rotateX(-90deg) rotateY(180deg)`, '50% 0%');
+
+  return out;
+}
+
+/* 先把旋转应用上去，再按「投影后的包围盒」缩放并居中。
+   之前只按宽度估缩放，转到俯视时深度展开就会溢出画布。 */
+function applyRotation(){
+  const pane  = $('#pane3d');
+  const scene = pane.querySelector('.scene3d');
+  const wrap  = pane.querySelector('.scene-wrap');
+  if(!scene || !wrap) return;
+
+  scene.style.transform = `rotateX(${V3.rx.toFixed(1)}deg) rotateY(${V3.ry.toFixed(1)}deg)`;
+
+  const paneRect = pane.getBoundingClientRect();
+  if(!paneRect.width) return;                       // 面板隐藏时/首次布局前先跳过
+
+  wrap.style.transform = 'none';
+  const r = scene.getBoundingClientRect();          // 旋转后的投影包围盒
+  if(!r.width || !r.height) return;
+
+  const pad = 46;
+  const s = Math.max(0.25, Math.min(1.6,
+    Math.min((paneRect.width - pad*2) / r.width,
+             (paneRect.height - pad*2) / r.height)));
+
+  const cx = (r.left + r.width/2)  - (paneRect.left + paneRect.width/2);
+  const cy = (r.top  + r.height/2) - (paneRect.top  + paneRect.height/2);
+  wrap.style.transform = `scale(${s.toFixed(3)}) translate(${(-cx).toFixed(1)}px, ${(-cy).toFixed(1)}px)`;
+}
+
+function render3D(o){
+  const pane = $('#pane3d');
+  if(!pane) return;
+
+  const panels = threePanels(o);
+
+  // 先在无 3D 变换的临时容器里做字号自适应（3D 变换会污染 getBoundingClientRect）
+  const scratch = document.createElement('div');
+  scratch.style.cssText = 'position:absolute;left:-9999px;top:0';
+  applyThemeVars(scratch);
+  document.body.appendChild(scratch);
+  panels.forEach(p => scratch.appendChild(p.el));
+  fitAllNumbers(scratch);
+  document.body.removeChild(scratch);
+
+  const wrap  = document.createElement('div');
+  wrap.className = 'scene-wrap';
+  const scene = document.createElement('div');
+  scene.className = 'scene3d';
+  applyThemeVars(scene);
+
+  panels.forEach(p => {
+    p.el.style.transform = p.tf;
+    p.el.style.transformOrigin = p.origin;
+    scene.appendChild(p.el);
+  });
+  wrap.appendChild(scene);
+
+  pane.querySelectorAll('.scene-wrap').forEach(n => n.remove());
+  pane.appendChild(wrap);
+  applyRotation();
+}
+
+/* ==================================================================
+   5. 字号自适应
+   ================================================================== */
+function fitAllNumbers(root){
+  root.querySelectorAll('.face').forEach(face=>{
+    const pad = face.querySelector('.pad');
+    const num = face.querySelector('.num');
+    const sub = face.querySelector('.sub');
+    if(!pad || !num || num.style.display === 'none') return;
+
+    const faceH = face.getBoundingClientRect().height;
+    const padEl = pad.getBoundingClientRect();
+    const subH  = sub ? sub.getBoundingClientRect().height : 0;
+    const maxW  = padEl.width * 0.92;
+    const ratio = num.dataset.maxh ? parseFloat(num.dataset.maxh) : 0.80;
+    const maxH  = Math.max(3, faceH*ratio - subH);
+
+    let fs = Math.min(48, faceH*0.95);
+    // 字距在测量之前设好（em 单位随字号缩放），否则量完再加会溢出
+    num.style.letterSpacing = '0.012em';
+    num.style.fontSize = fs + 'mm';
+    for(let i=0;i<90;i++){
+      const r = num.getBoundingClientRect();
+      if(r.width <= maxW && r.height <= maxH) break;
+      fs *= 0.945;
+      if(fs < 3) break;
+      num.style.fontSize = fs + 'mm';
+    }
+  });
+}
+
+/* ==================================================================
+   6. 渲染
+   ================================================================== */
+function currentOpts(){
+  const number = formatNumber(phoneEl.value, spacedEl.checked) || '000 0000 0000';
+  const innerNum = $('#innerNumber').checked;
+  const innerBig = $('#innerBig').value.trim();
+  const innerSmall = $('#innerSmall').value.trim();
+
+  return {
+    number,
+    sub: subEl.value.trim(),
+    outer: { main: number, small: subEl.value.trim(), maxHRatio: 0.80 },
+    inner: {
+      main: innerNum ? number : innerBig,
+      small: innerSmall,
+      maxHRatio: innerNum ? 0.80 : 0.45    // 文字（非号码）不要撑满整面
+    },
+    showFold: foldEl.checked
+  };
+}
+
+function render(){
+  const o = currentOpts();
+  sheetHost.innerHTML = '';
+  sheetHost.appendChild(buildSheet(o));
+
+  fitAllNumbers(sheetHost);
+  zoomToFit();
+  render3D(o);
+
+  const m = metrics(), g = grid();
+  $('#footHint').textContent =
+    `纸面 ${m.pw}×${m.ph}mm，脚占 ${Math.round(state.footMm/m.ph*100)}%。脚越长越稳，但纸面也越高。`;
+  $('#sizeLabel').textContent = `成品 ${m.w}×${m.h}mm · 每页 ${g.want} 张（最多 ${g.max}）`;
+  $('#paneHow').innerHTML = howtoHTML(o);
+}
+
+function mmPerPx(){
+  const p = document.createElement('div');
+  p.style.cssText='position:absolute;width:100mm;height:0;visibility:hidden';
+  document.body.appendChild(p);
+  const w = p.getBoundingClientRect().width;
+  p.remove();
+  return 100 / w;
+}
+
+function zoomToFit(){
+  const sheet = sheetHost.querySelector('.sheet');
+  if(!sheet) return;
+  const availW = stageInner.clientWidth  - 32;
+  const availH = stageInner.clientHeight - 32;
+  if(availW <= 0 || availH <= 0) return;      // 面板隐藏时不量
+  const pxPerMm = 1 / mmPerPx();
+  const z = Math.min(1, availW/(pxPerMm*SHEET.w), availH/(pxPerMm*SHEET.h));
+  sheet.style.zoom = z;
+}
+
+function tentDiagram(foot, o){
+  const outerTxt = (o.outer.main || '号码').slice(0, 16);
+  const innerRaw = (o.inner.main || '内侧');
+  const innerTxt = innerRaw.slice(0, 16);
+  // 短文本按原尺寸排，长串（比如号码）压缩到框内
+  const innerFit = innerRaw.length > 6 ? 'textLength="104" lengthAdjust="spacingAndGlyphs"' : '';
+  return `<svg viewBox="0 0 470 158" style="width:100%;max-width:600px;display:block;margin:0">
+    <g font-family="'PingFang SC',sans-serif">
+      <text x="24" y="10" font-size="9.5" fill="#9aa0ab">① 平铺 · 印刷面朝上</text>
+      <text x="264" y="10" font-size="9.5" fill="#9aa0ab">② 折起来 · 印刷面朝外</text>
+
+      <rect x="24" y="18" width="120" height="116" rx="2" fill="#fff" stroke="#c9ccd4"/>
+      <rect x="24" y="18" width="120" height="20" fill="#eef0f3"/>
+      <rect x="24" y="114" width="120" height="20" fill="#eef0f3"/>
+      <line x1="24" y1="76" x2="144" y2="76" stroke="#98a0ae" stroke-dasharray="4 3"/>
+
+      <text x="84" y="32"  font-size="9" fill="#6b7280" text-anchor="middle">上脚 ${foot}mm</text>
+      <text x="84" y="128" font-size="9" fill="#6b7280" text-anchor="middle">下脚 ${foot}mm</text>
+
+      <text x="84" y="62" font-size="13" font-weight="700" fill="#111" text-anchor="middle"
+            transform="rotate(180 84 56)" ${innerFit}>${innerTxt}</text>
+      <text x="84" y="100" font-size="13" font-weight="700" fill="#111" text-anchor="middle"
+            textLength="104" lengthAdjust="spacingAndGlyphs">${outerTxt}</text>
+
+      <text x="149" y="79" font-size="9" fill="#6b7280">折（脊）</text>
+      <text x="149" y="52" font-size="8.5" fill="#9aa0ab">上半：倒着印 · 内侧</text>
+      <text x="149" y="106" font-size="8.5" fill="#9aa0ab">下半：正着印 · 外侧</text>
+
+      <path d="M262 112 L330 40 L398 112" fill="none" stroke="#111" stroke-width="1.6"/>
+      <path d="M262 112 L242 112" fill="none" stroke="#111" stroke-width="1.6"/>
+      <path d="M398 112 L418 112" fill="none" stroke="#111" stroke-width="1.6"/>
+      <text x="330" y="34" font-size="9" fill="#6b7280" text-anchor="middle">折脊朝上</text>
+      <text x="330" y="128" font-size="9" fill="#6b7280" text-anchor="middle">两条脚外折，贴住台面</text>
+      <text x="330" y="146" font-size="8.5" fill="#9aa0ab" text-anchor="middle">号码那面朝挡风玻璃，另一面朝自己</text>
+    </g>
+  </svg>`;
+}
+
+function howtoHTML(o){
+  const rows = [
+    '沿裁切线裁下整块纸面（一页两张）',
+    '中间那条横虚线对折，印刷面朝外翻成 Λ 形',
+    '上下两条窄边分别向外折成「脚」，压在台面上',
+    '立在仪表台上：印号码那面朝挡风玻璃，另一面朝自己',
+    '不用胶水，两面内容各自独立，内侧默认不印号码'
+  ];
+  const m = metrics();
+
+  return `<div style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start">
+    <div style="flex:0 0 auto;width:100%;max-width:520px">${tentDiagram(m.foot, o)}</div>
+    <div style="flex:1 1 260px;min-width:230px">
+      <h2>折叠步骤</h2>
+      <div class="steps">
+        ${rows.map((t,i)=>`<div><b>${i+1}</b><span>${t}</span></div>`).join('')}
+      </div>
+      <h2 style="margin-top:14px">打印设置</h2>
+      <div class="hint">
+        <b style="color:#111">A4 横向 · 缩放 100% · 边距无 · 勾选背景图形</b><br>
+        Mac：⌘+P →「更多设置」。纸的右下角印了 50mm 标尺，印完量一下就知道缩放对不对。<br>
+        卡纸 200–250g 最好折；深色主题费墨，家用喷墨建议先试白底/黄底。
+      </div>
+    </div>
+  </div>`;
+}
+
+
+/* ==================================================================
+   7. 主题格子
+   ================================================================== */
+function renderThemeGrid(){
+  $('#themeGrid').innerHTML = THEMES.map(t => `
+    <button class="tcard" data-theme="${t.id}" aria-pressed="${t.id===state.themeId}">
+      <div class="prev" style="background-color:${t.bg};color:${t.fg};
+        background-image:${t.pattern};background-size:${t.patternSize||'auto'};
+        font-family:${FONTS[t.font].num}">138 0000</div>
+      <div class="nm">${t.name}</div>
+    </button>`).join('');
+}
+
+/* ==================================================================
+   8. 事件
+   ================================================================== */
+function bindChips(sel, key, cast){
+  $(sel).addEventListener('click', e=>{
+    const b = e.target.closest('.chip'); if(!b) return;
+    state[key] = cast ? cast(b.dataset[key]) : b.dataset[key];
+    [...$(sel).children].forEach(c=>c.setAttribute('aria-pressed', c===b));
+    render();
+  });
+}
+
+bindChips('#sizeChips','size');
+$('#fontSel').addEventListener('change', e=>{ state.font = e.target.value; render(); });
+$('#borderSel').addEventListener('change', e=>{ state.border = e.target.value; render(); });
+
+$('#footChips').addEventListener('click', e=>{
+  const b = e.target.closest('.chip'); if(!b) return;
+  state.footMm = +b.dataset.foot;
+  [...$('#footChips').children].forEach(c=>c.setAttribute('aria-pressed', c===b));
+  render();
+});
+
+$('#copyChips').addEventListener('click', e=>{
+  const b = e.target.closest('.chip'); if(!b) return;
+  state.copies = b.dataset.copies;
+  [...$('#copyChips').children].forEach(c=>c.setAttribute('aria-pressed', c===b));
+  render();
+});
+
+$('#themeGrid').addEventListener('click', e=>{
+  const b = e.target.closest('.tcard'); if(!b) return;
+  const t = THEMES.find(x=>x.id===b.dataset.theme);
+  state.themeId = t.id;
+  state.font = t.font;
+  state.border = t.border;
+  state.bg = null; state.fg = null;
+  [...$('#themeGrid').children].forEach(c=>c.setAttribute('aria-pressed', c===b));
+  $('#fontSel').value = t.font;
+  $('#borderSel').value = t.border;
+  $('#bgColor').value = t.bg;
+  $('#fgColor').value = t.fg;
+  render();
+});
+
+$('#bgColor').addEventListener('input', e=>{ state.bg = e.target.value; render(); });
+$('#fgColor').addEventListener('input', e=>{ state.fg = e.target.value; render(); });
+$('#resetColors').addEventListener('click', ()=>{
+  state.bg = state.fg = null;
+  const t = theme();
+  $('#bgColor').value = t.bg; $('#fgColor').value = t.fg;
+  render();
+});
+
+/* ---- 视图切换 ---- */
+let view = '2d';
+function setView(v){
+  view = v;
+  [...document.querySelectorAll('.vtab')].forEach(b=>b.setAttribute('aria-pressed', b.dataset.view===v));
+  $('#stageBar').style.display   = v==='2d' ? '' : 'none';
+  $('#stageInner').style.display = v==='2d' ? 'flex' : 'none';
+  $('#pane3d').style.display     = v==='3d' ? 'flex' : 'none';
+  $('#paneHow').style.display    = v==='how' ? 'flex' : 'none';
+  if(v === '2d') zoomToFit();
+  else if(v === '3d') applyRotation();
+}
+document.querySelectorAll('.vtab').forEach(b=>{
+  b.addEventListener('click', ()=>setView(b.dataset.view));
+});
+
+/* ---- 拖动旋转 ---- */
+const pane3d = $('#pane3d');
+let drag = null;
+pane3d.addEventListener('pointerdown', e=>{
+  if(e.target.closest('.reset3d')) return;
+  e.preventDefault();
+  drag = { x:e.clientX, y:e.clientY, rx:V3.rx, ry:V3.ry };
+  pane3d.classList.add('dragging');
+  try{ pane3d.setPointerCapture(e.pointerId); }catch(_){}
+});
+pane3d.addEventListener('pointermove', e=>{
+  if(!drag) return;
+  V3.ry = drag.ry + (e.clientX - drag.x) * 0.45;
+  V3.rx = Math.max(-55, Math.min(70, drag.rx + (e.clientY - drag.y) * 0.45));
+  applyRotation();
+});
+['pointerup','pointercancel','pointerleave'].forEach(ev=>{
+  pane3d.addEventListener(ev, ()=>{ drag = null; pane3d.classList.remove('dragging'); });
+});
+function resetView(){
+  V3.rx = VIEW_DEFAULT.rx; V3.ry = VIEW_DEFAULT.ry;
+  applyRotation();
+}
+$('#reset3d').addEventListener('click', resetView);
+
+let timer = null;
+[phoneEl, subEl, $('#innerBig'), $('#innerSmall')].forEach(el=>el.addEventListener('input', ()=>{
+  clearTimeout(timer); timer = setTimeout(render, 130);
+}));
+[spacedEl, foldEl, $('#innerNumber')].forEach(el=>el.addEventListener('change', render));
+
+/* 打印前把纸克隆到一个独立容器里，彻底绕开一屏布局的高度/缩放约束 */
+function preparePrint(){
+  const src = sheetHost.querySelector('.sheet');
+  const box = document.getElementById('printOnly');
+  if(!src || !box) return;
+  const clone = src.cloneNode(true);
+  clone.style.zoom = 1;
+  clone.style.transform = 'none';
+  box.innerHTML = '';
+  box.appendChild(clone);
+  document.body.classList.add('print-ready');
+}
+function cleanupPrint(){
+  const box = document.getElementById('printOnly');
+  if(box) box.innerHTML = '';
+  document.body.classList.remove('print-ready');
+}
+window.addEventListener('beforeprint', preparePrint);
+window.addEventListener('afterprint', cleanupPrint);
+
+$('#printBtn').addEventListener('click', ()=>{ preparePrint(); window.print(); });
+
+let rt = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(rt);
+  rt = setTimeout(()=>{ zoomToFit(); applyRotation(); }, 120);
+});
+
+/* ==================================================================
+   9. 启动
+   ================================================================== */
+resetView();
+renderThemeGrid();
+$('#bgColor').value = theme().bg;
+$('#fgColor').value = theme().fg;
+$('#fontSel').value = state.font;
+$('#borderSel').value = state.border;
+render();
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+</script>
+</body>
+</html>
